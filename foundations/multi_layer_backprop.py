@@ -17,71 +17,55 @@ class Solution:
         #   'db1':   1D list (gradient w.r.t. b1, rounded to 4 decimals)
         #   'dW2':   2D list (gradient w.r.t. W2, rounded to 4 decimals)
         #   'db2':   1D list (gradient w.r.t. b2, rounded to 4 decimals)
-
-        '''
-        weights are (out, in)
-        x: (2)
-        W1: (2,2)
-        b1: (2)
-        W2: (1,2)
-        b2: (1,)
-
-        '''
         
+        '''
+        x.shape = (2,)
+        W1.shape = (2,2)
+        b1.shape = (2,)
+        W2.shape = (1,2)
+        b2.shape = (1,)
+        y_true = (1,)
+
+        Arch: x -> Linear(W1, b1) -> ReLU -> Linear(W2, b2) -> predictions -> Loss
+        '''
+
         x = np.array(x)
         W1, W2 = np.array(W1), np.array(W2)
         b1, b2 = np.array(b1), np.array(b2)
         y_true = np.array(y_true)
         
-        # Forward pass
-        z1 = x @ W1.T + b1  # (2,) @ (2,2) + (2,) = (2,)
-        a1 = np.maximum(0, z1)  # (2,)
-        z2 = a1 @ W2.T + b2  # (2,) @ (2,1) + (1,) = (1,)
-
-        # Loss
-        loss = np.mean((z2 - y_true) ** 2)
-
-        # Backward
-        '''
-        x              W2
-        W1  --> z1 --> a1 --> z2 --> L
-        b1             b2     yt
-        
-        1)
-        dL/dL = 1.0
-
-        2)
-        dL/z2 = dL/dL * dL/z2 = 1.0 * 2.0 * (z2 - yt) / n
-
-        3)
-        dL/dW2 = dL/dz2 * dz2/dW2 = dL/dz2 * a1
-        dL/da1 = dL/dz2 * dz2/da1 = dL/dz2 * W2
-        dL/db2 = dL/dz2 * dz2/db2 = dL/dz2 * 1.0
-
-        4)
-        dL/dz1 = dL/da1 * da1/dz1 = dL/da1 * (1.0); if > 0
-
-        5)
-        dL/dx = dL/dz1 * dz1/dx = dL/dz1 * W1
-        dL/dW1 = dL/dz1 * dz1/dW1 = dL/dz1 * x
-        dL/db1 = dL/dz1 * dz1/db1 = dL/dz1 * 1.0
-
-        '''
         n = len(y_true) if y_true.ndim > 0 else 1
-        dz2 = 2 * (z2 - y_true) / n  # dL/dz2
-        dW2 = dz2.reshape(-1, 1) @ a1.reshape(1, -1)  # dL/dW2
-        db2 = dz2                      # dL/db2
+        relu = lambda z: np.maximum(0, z)
 
-        da1 = dz2.reshape(1, -1) @ W2  # dL/da1
-        da1 = da1.flatten()
-        dz1 = da1 * (z1 > 0).astype(float)  # ReLU derivative
-        dW1 = dz1.reshape(-1, 1) @ x.reshape(1, -1)  # dL/dW1
-        db1 = dz1
+        ## Forward
+        z1 = x @ W1.T + b1  # (2,)
+        a1 = relu(z1)  # (2,)
+        yhat = W2 @ a1 + b2  # (1,)
+        
+        ## Loss
+        L = np.mean(np.square(yhat - y_true))
+
+        ## Backward (Gradients)
+
+        ### Preds
+        dL_dyhat = 2.0 * (yhat - y_true) / n  # (1,)
+
+        ### Second layer
+        dL_dW2 = dL_dyhat.reshape(1, -1) @ a1.reshape(1, -1)
+        dL_db2 = dL_dyhat * 1.0
+        dL_da1 = dL_dyhat @ W2  # (2,)
+
+        ### ReLU
+        dL_dz1 = dL_da1 * (z1 > 0).astype(float)  # (2,)
+
+        ### First layer
+        dL_dW1 = dL_dz1.reshape(-1, 1) @ x.reshape(1, -1)
+        dL_db1 = dL_dz1 * 1.0
 
         return {
-            'loss': round(float(loss), 4),
-            'dW1': np.round(dW1, 4).tolist(),
-            'db1': np.round(db1, 4).tolist(),
-            'dW2': np.round(dW2, 4).tolist(),
-            'db2': np.round(db2, 4).tolist(),
+            'loss': np.round(L, 4),
+            'dW1': np.round(dL_dW1, 4).tolist(),
+            'db1': np.round(dL_db1, 4).tolist(),
+            'dW2': np.round(dL_dW2, 4).tolist(),
+            'db2': np.round(dL_db2, 4).tolist()
         }
