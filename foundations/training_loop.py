@@ -26,13 +26,13 @@ class Solution:
 
         for _ in range(epochs):
             ## Forward
-            y_hat = X @ W + b  # (N,D) @ (D)
+            y_hat = X @ W + b  # (N,D) @ (D,) = (N,)
             
             ## Loss (not really required)
             L = np.mean(np.square(y_hat - y))
 
             ## Backward
-            dL_dW = (2.0/N) * ((y_hat - y) @ X)  # (3,) @ (3,1) = (1,)
+            dL_dW = (2.0/N) * ((y_hat - y) @ X)  # (N,) @ (N,D) = (D,)
             dL_db = (2.0/N) * np.sum(y_hat - y)
 
             ## Optimizer step
